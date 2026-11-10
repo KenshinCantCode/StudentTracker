@@ -2,9 +2,9 @@ import Link from "next/link";
 import Avatar from "@/components/Avatar";
 import { ConfirmButton, ResetPasswordButton } from "@/components/clients";
 import Flash, { one, type SP } from "@/components/Flash";
-import { addUser, deleteUser, editUser, resetPassword, toggleUser } from "@/app/actions/admin";
+import { addUser, adjustHours, deleteUser, editUser, resetPassword, toggleUser } from "@/app/actions/admin";
 import { avatarSrc, requireAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { query } from "@/lib/db";
 import { fmtHours } from "@/lib/time";
 
 export const metadata = { title: "Students" };
@@ -16,13 +16,19 @@ export default async function Students({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const q = (one(sp.q) ?? "").trim();
   const editId = Number(one(sp.edit)) || 0;
-  const rows = db()
-    .prepare(
-      `SELECT u.id,u.school_id,u.name,u.email,u.role,u.course,u.active,u.photo_ver,
-        (SELECT COALESCE(SUM((COALESCE(time_out,@now)-time_in)/1000),0) FROM attendance WHERE user_id=u.id) secs
-       FROM users u WHERE (@q='' OR u.name LIKE '%'||@q||'%' OR u.school_id LIKE '%'||@q||'%') ORDER BY u.role, u.name`
-    )
-    .all({ q, now: Date.now() }) as Row[];
+  const hoursId = Number(one(sp.hours)) || 0;
+  const { rows } = await query<Row>(
+    `SELECT u.id,u.school_id,u.name,u.email,u.role,u.course,u.active,u.photo_ver,
+      COALESCE((SELECT SUM((COALESCE(time_out,$1)-time_in)/1000) FROM attendance WHERE user_id=u.id),0)
+      + COALESCE((SELECT SUM(seconds) FROM hour_adjustments WHERE user_id=u.id),0) secs
+     FROM users u WHERE ($2='' OR u.name ILIKE '%'||$2||'%' OR u.school_id ILIKE '%'||$2||'%') ORDER BY u.role, u.name`,
+    [Date.now(), q]
+  );
+  const { rows: adjustments } = await query<{ id: number; name: string; school_id: string; admin_name: string; seconds: number; reason: string; created_at: number }>(
+    `SELECT ha.id,u.name,u.school_id,admin.name admin_name,ha.seconds,ha.reason,ha.created_at
+     FROM hour_adjustments ha JOIN users u ON u.id=ha.user_id JOIN users admin ON admin.id=ha.admin_id
+     ORDER BY ha.created_at DESC LIMIT 20`
+  );
 
   return (
     <>
@@ -68,6 +74,18 @@ export default async function Students({ searchParams }: { searchParams: Promise
                       </form>
                     </td>
                   </tr>
+                ) : r.id === hoursId ? (
+                  <tr key={r.id}>
+                    <td colSpan={6}>
+                      <form action={adjustHours} className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <input type="hidden" name="user_id" value={r.id} />
+                        <div><label className="lbl">Adjust hours for {r.name}</label><select name="direction" className="field"><option value="add">Add hours</option><option value="remove">Remove hours</option></select></div>
+                        <div><label className="lbl">Amount</label><input type="number" name="hours" min="0.01" max="1000" step="0.01" required className="field" /></div>
+                        <div><label className="lbl">Reason</label><input name="reason" maxLength={240} required className="field" /></div>
+                        <div className="flex gap-2"><button className="btn btn-sm">Save adjustment</button><Link href="/admin/students" className="btn btn-sm btn-ghost">Cancel</Link></div>
+                      </form>
+                    </td>
+                  </tr>
                 ) : (
                   <tr key={r.id}>
                     <td>
@@ -85,6 +103,7 @@ export default async function Students({ searchParams }: { searchParams: Promise
                     <td>{r.active ? <span className="tag-active">ACTIVE</span> : <span className="tag-done">DISABLED</span>}</td>
                     <td className="whitespace-nowrap text-right">
                       <div className="flex justify-end gap-1.5">
+                        {r.role === "student" && <Link href={`/admin/students?hours=${r.id}`} className="btn btn-sm btn-ghost">Adjust hours</Link>}
                         <Link href={`/admin/students?edit=${r.id}`} className="btn btn-sm btn-ghost">Edit</Link>
                         <form action={resetPassword}><input type="hidden" name="id" value={r.id} /><input type="hidden" name="new" /><ResetPasswordButton name={r.name} /></form>
                         {r.id !== me.id && (
@@ -98,6 +117,19 @@ export default async function Students({ searchParams }: { searchParams: Promise
                   </tr>
                 )
               )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card-w mt-5">
+        <h3 className="mb-3 font-bold">Recent hour adjustments</h3>
+        <div className="overflow-auto rounded-lg border border-slate-200">
+          <table className="tbl">
+            <thead><tr><th>Student</th><th>Change</th><th>Reason</th><th>Admin</th><th>Date</th></tr></thead>
+            <tbody>
+              {adjustments.length === 0 && <tr><td colSpan={5} className="py-6 text-center text-slate-500">No hour adjustments yet.</td></tr>}
+              {adjustments.map((a) => <tr key={a.id}><td><b>{a.name}</b><br /><small className="text-slate-500">{a.school_id}</small></td><td className={a.seconds > 0 ? "text-emerald-700" : "text-red-700"}>{a.seconds > 0 ? "+" : ""}{(a.seconds / 3600).toFixed(2)} h</td><td>{a.reason}</td><td>{a.admin_name}</td><td>{new Date(a.created_at).toLocaleString()}</td></tr>)}
             </tbody>
           </table>
         </div>

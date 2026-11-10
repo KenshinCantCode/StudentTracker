@@ -19,7 +19,7 @@ export async function GET(req: Request) {
   const to = p.get("to") || todayInput();
   const fs = dayStart(from);
   const te = dayStart(to);
-  const rows = adminFilter({
+  const rows = await adminFilter({
     user: Number(p.get("user")) || undefined,
     from: fs,
     to: te == null ? null : te + 86400000,

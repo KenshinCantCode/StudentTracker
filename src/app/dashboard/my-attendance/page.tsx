@@ -13,7 +13,7 @@ export default async function MyAttendance({ searchParams }: { searchParams: Pro
   const per = [10, 15, 25, 50].includes(Number(one(sp.per))) ? Number(one(sp.per)) : 15;
   const order = one(sp.order) === "old" ? "ASC" : "DESC";
   const range = parseRange(one(sp.range));
-  const { rows, pages, page } = attendancePage(u.id, { per, order, range, page: Number(one(sp.p)) || 1 });
+  const { rows, pages, page } = await attendancePage(u.id, { per, order, range, page: Number(one(sp.p)) || 1 });
 
   const link = (p: number) => {
     const q = new URLSearchParams({ per: String(per), order: order === "ASC" ? "old" : "new", range, p: String(p) });

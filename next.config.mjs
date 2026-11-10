@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: ["pg"],
   experimental: { serverActions: { bodySizeLimit: "3mb" } },
 };
 export default nextConfig;

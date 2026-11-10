@@ -1,7 +1,7 @@
 "use server";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { query } from "@/lib/db";
 import { createSession, destroySession } from "@/lib/auth";
 
 // Simple in-memory brute-force guard: 5 failures per ID => 5 minute lockout.
@@ -18,9 +18,9 @@ export async function login(_prev: LoginState, fd: FormData): Promise<LoginState
   const f = fails.get(key);
   if (f && f.until > Date.now()) return { error: "Too many attempts. Try again in a few minutes.", identity: id };
 
-  const u = db()
-    .prepare("SELECT id,password_hash,role FROM users WHERE (school_id=@id OR email=@id) AND active=1")
-    .get({ id }) as { id: number; password_hash: string; role: string } | undefined;
+  const { rows: [u] } = await query<{ id: number; password_hash: string; role: string }>(
+    "SELECT id,password_hash,role FROM users WHERE (school_id=$1 OR LOWER(email)=LOWER($1)) AND active=1 LIMIT 1", [id]
+  );
 
   if (!u || !bcrypt.compareSync(pw, u.password_hash)) {
     const n = (f?.n ?? 0) + 1;

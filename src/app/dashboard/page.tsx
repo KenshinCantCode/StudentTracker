@@ -6,8 +6,7 @@ export const metadata = { title: "Dashboard" };
 
 export default async function Dashboard() {
   const u = await requireUser();
-  const st = userStats(u.id);
-  const recent = recentAttendance(u.id, 5);
+  const [st, recent] = await Promise.all([userStats(u.id), recentAttendance(u.id, 5)]);
   const stats = [
     { t: "Total Hours", v: st.total, s: "Total rendered time" },
     { t: "Daily Average", v: st.daily, s: "Average hours per active day" },

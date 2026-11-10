@@ -2,11 +2,15 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
-import { db } from "./db";
+import { query } from "./db";
 
 const COOKIE = "dt_session";
 const MAX_AGE = 60 * 60 * 24 * 7;
-const secret = () => new TextEncoder().encode(process.env.SESSION_SECRET || "dev-only-secret-change-me");
+const secret = () => {
+  const value = process.env.SESSION_SECRET;
+  if (!value && process.env.NODE_ENV === "production") throw new Error("SESSION_SECRET is required in production.");
+  return new TextEncoder().encode(value || "dev-only-secret-change-me");
+};
 
 export type SessionUser = {
   id: number;
@@ -41,9 +45,9 @@ export const getUser = cache(async (): Promise<SessionUser | null> => {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret());
-    const u = db()
-      .prepare("SELECT id,school_id,name,email,role,course,photo_ver FROM users WHERE id=? AND active=1")
-      .get(Number(payload.uid)) as SessionUser | undefined;
+    const { rows: [u] } = await query<SessionUser>(
+      "SELECT id,school_id,name,email,role,course,photo_ver FROM users WHERE id=$1 AND active=1", [Number(payload.uid)]
+    );
     return u ?? null;
   } catch {
     return null;

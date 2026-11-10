@@ -1,7 +1,7 @@
 "use server";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { query } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { withMsg } from "@/components/Flash";
 
@@ -22,7 +22,7 @@ export async function uploadPhoto(fd: FormData) {
   const buf = Buffer.from(await f.arrayBuffer());
   const mime = sniff(buf);
   if (!mime) redirect(withMsg(BACK, "Use a JPG, PNG or WEBP image.", "err"));
-  db().prepare("UPDATE users SET photo=?, photo_mime=?, photo_ver=? WHERE id=?").run(buf, mime, Date.now(), u.id);
+  await query("UPDATE users SET photo=$1, photo_mime=$2, photo_ver=$3 WHERE id=$4", [buf, mime, Date.now(), u.id]);
   redirect(withMsg(BACK, "Photo updated."));
 }
 
@@ -30,9 +30,9 @@ export async function changePassword(fd: FormData) {
   const u = await requireUser();
   const cur = String(fd.get("current") ?? "");
   const next = String(fd.get("new") ?? "");
-  const row = db().prepare("SELECT password_hash FROM users WHERE id=?").get(u.id) as { password_hash: string };
+  const { rows: [row] } = await query<{ password_hash: string }>("SELECT password_hash FROM users WHERE id=$1", [u.id]);
   if (!bcrypt.compareSync(cur, row.password_hash)) redirect(withMsg(BACK, "Current password is incorrect.", "err"));
   if (next.length < 8) redirect(withMsg(BACK, "New password must be at least 8 characters.", "err"));
-  db().prepare("UPDATE users SET password_hash=? WHERE id=?").run(bcrypt.hashSync(next, 10), u.id);
+  await query("UPDATE users SET password_hash=$1 WHERE id=$2", [bcrypt.hashSync(next, 10), u.id]);
   redirect(withMsg(BACK, "Password changed."));
 }

@@ -10,7 +10,7 @@ export const metadata = { title: "Leaderboards" };
 export default async function Leaderboard({ searchParams }: { searchParams: Promise<SP> }) {
   const me = await requireUser();
   const range = parseRange(one((await searchParams).range));
-  const rows = leaderboard(range);
+  const rows = await leaderboard(range);
   const top = rows.slice(0, 3);
   const slots = [
     { i: 1, bar: "h-[130px] from-gray-200 to-slate-300", img: "h-[84px] w-[84px]", medal: "🥈" },

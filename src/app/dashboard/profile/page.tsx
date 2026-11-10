@@ -9,8 +9,7 @@ export const metadata = { title: "My Profile" };
 
 export default async function Profile({ searchParams }: { searchParams: Promise<SP> }) {
   const u = await requireUser();
-  const st = userStats(u.id);
-  const on = isOnDuty(u.id);
+  const [st, on] = await Promise.all([userStats(u.id), isOnDuty(u.id)]);
   const stats = [
     { v: fmtHours(st.total), l: "Total Hours" },
     { v: fmtHours(st.daily), l: "Daily Average" },

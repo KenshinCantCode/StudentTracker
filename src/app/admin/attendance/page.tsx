@@ -3,7 +3,7 @@ import Flash, { one, type SP } from "@/components/Flash";
 import { ConfirmButton } from "@/components/clients";
 import { addRecord, deleteRecord, editRecord } from "@/app/actions/admin";
 import { requireAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { query } from "@/lib/db";
 import { adminFilter } from "@/lib/queries";
 import { dayStart, fmtDate, fmtDur, fmtTime, monthStartInput, todayInput, toLocalInput } from "@/lib/time";
 
@@ -20,9 +20,9 @@ export default async function AdminAttendance({ searchParams }: { searchParams: 
   const editId = Number(one(sp.edit)) || 0;
 
   const toMs = dayStart(to);
-  const rows = adminFilter({ user: user || undefined, from: dayStart(from), to: toMs == null ? null : toMs + 86400000, open, limit: LIMIT });
+  const rows = await adminFilter({ user: user || undefined, from: dayStart(from), to: toMs == null ? null : toMs + 86400000, open, limit: LIMIT });
   const sum = rows.reduce((s, r) => s + r.secs, 0);
-  const users = db().prepare("SELECT id,name,school_id FROM users WHERE active=1 ORDER BY name").all() as { id: number; name: string; school_id: string }[];
+  const { rows: users } = await query<{ id: number; name: string; school_id: string }>("SELECT id,name,school_id FROM users WHERE active=1 ORDER BY name");
   const exportQs = new URLSearchParams({ user: String(user), from, to, ...(open ? { status: "open" } : {}) });
 
   return (

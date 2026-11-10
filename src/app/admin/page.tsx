@@ -4,21 +4,28 @@ import { ConfirmButton } from "@/components/clients";
 import Flash, { type SP } from "@/components/Flash";
 import { forceAll, forceOut } from "@/app/actions/admin";
 import { avatarSrc } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { query } from "@/lib/db";
 import { onDuty } from "@/lib/queries";
 import { fmtDateTime, fmtDur, fmtHours, startOfDay, startOfWeek } from "@/lib/time";
 
 export const metadata = { title: "Admin Overview" };
 
 export default async function AdminHome({ searchParams }: { searchParams: Promise<SP> }) {
-  const d = db();
   const now = Date.now();
-  const one = <T,>(sql: string, ...a: unknown[]) => (d.prepare(sql).get(...a) as { v: T }).v;
-  const students = one<number>("SELECT COUNT(*) v FROM users WHERE role='student' AND active=1");
-  const today = one<number>("SELECT COUNT(*) v FROM attendance WHERE time_in>=?", startOfDay(now));
-  const week = one<number>("SELECT COALESCE(SUM((COALESCE(time_out,?)-time_in)/1000),0) v FROM attendance WHERE time_in>=?", now, startOfWeek(now));
-  const forgot = one<number>("SELECT COUNT(*) v FROM attendance WHERE time_out IS NULL AND time_in<?", startOfDay(now));
-  const duty = onDuty();
+  const [studentsResult, todayResult, weekResult, forgotResult, duty] = await Promise.all([
+    query<{ v: number }>("SELECT COUNT(*)::int v FROM users WHERE role='student' AND active=1"),
+    query<{ v: number }>("SELECT COUNT(*)::int v FROM attendance WHERE time_in >= $1", [startOfDay(now)]),
+    query<{ v: number }>(
+      `SELECT COALESCE((SELECT SUM((COALESCE(time_out,$1)-time_in)/1000) FROM attendance WHERE time_in >= $2),0)
+        + COALESCE((SELECT SUM(seconds)/3600.0 FROM hour_adjustments WHERE created_at >= $2),0) v`, [now, startOfWeek(now)]
+    ),
+    query<{ v: number }>("SELECT COUNT(*)::int v FROM attendance WHERE time_out IS NULL AND time_in < $1", [startOfDay(now)]),
+    onDuty(),
+  ]);
+  const students = studentsResult.rows[0].v;
+  const today = todayResult.rows[0].v;
+  const week = weekResult.rows[0].v;
+  const forgot = forgotResult.rows[0].v;
 
   const stats = [
     { t: "Active Students", v: students, s: "Registered & enabled" },
