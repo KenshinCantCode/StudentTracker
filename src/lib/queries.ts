@@ -17,8 +17,8 @@ export async function userStats(uid: number) {
   const off = TZ_OFFSET_MIN * 60;
   const { rows: [r] } = await query<{ total: number; days: number; weeks: number }>(
     `SELECT COALESCE(SUM(${SECS}),0) + COALESCE((SELECT SUM(seconds) FROM hour_adjustments WHERE user_id=$2),0) total,
-      COUNT(DISTINCT TO_CHAR(TO_TIMESTAMP(a.time_in/1000+$3) AT TIME ZONE 'UTC','YYYY-MM-DD')) days,
-      COUNT(DISTINCT TO_CHAR(TO_TIMESTAMP(a.time_in/1000+$3) AT TIME ZONE 'UTC','IYYY-IW')) weeks
+      COUNT(DISTINCT date(a.time_in/1000,'unixepoch',printf('%+d seconds',$3))) days,
+      COUNT(DISTINCT date(a.time_in/1000,'unixepoch',printf('%+d seconds',$3),'-6 days','weekday 1')) weeks
      FROM attendance a WHERE a.user_id=$2`,
     [Date.now(), uid, off]
   );
@@ -44,7 +44,7 @@ export async function recentAttendance(uid: number, limit = 5) {
 
 export async function attendancePage(uid: number, o: { per: number; order: "ASC" | "DESC"; range: Range; page: number }) {
   const since = rangeStart(o.range);
-  const { rows: [count] } = await query<{ c: number }>("SELECT COUNT(*)::int c FROM attendance WHERE user_id=$1 AND time_in >= $2", [uid, since]);
+  const { rows: [count] } = await query<{ c: number }>("SELECT COUNT(*) c FROM attendance WHERE user_id=$1 AND time_in >= $2", [uid, since]);
   const total = count.c;
   const pages = Math.max(1, Math.ceil(total / o.per));
   const page = Math.min(Math.max(1, o.page), pages);

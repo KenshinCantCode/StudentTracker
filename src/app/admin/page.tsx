@@ -13,13 +13,13 @@ export const metadata = { title: "Admin Overview" };
 export default async function AdminHome({ searchParams }: { searchParams: Promise<SP> }) {
   const now = Date.now();
   const [studentsResult, todayResult, weekResult, forgotResult, duty] = await Promise.all([
-    query<{ v: number }>("SELECT COUNT(*)::int v FROM users WHERE role='student' AND active=1"),
-    query<{ v: number }>("SELECT COUNT(*)::int v FROM attendance WHERE time_in >= $1", [startOfDay(now)]),
+    query<{ v: number }>("SELECT COUNT(*) v FROM users WHERE role='student' AND active=1"),
+    query<{ v: number }>("SELECT COUNT(*) v FROM attendance WHERE time_in >= $1", [startOfDay(now)]),
     query<{ v: number }>(
       `SELECT COALESCE((SELECT SUM((COALESCE(time_out,$1)-time_in)/1000) FROM attendance WHERE time_in >= $2),0)
         + COALESCE((SELECT SUM(seconds)/3600.0 FROM hour_adjustments WHERE created_at >= $2),0) v`, [now, startOfWeek(now)]
     ),
-    query<{ v: number }>("SELECT COUNT(*)::int v FROM attendance WHERE time_out IS NULL AND time_in < $1", [startOfDay(now)]),
+    query<{ v: number }>("SELECT COUNT(*) v FROM attendance WHERE time_out IS NULL AND time_in < $1", [startOfDay(now)]),
     onDuty(),
   ]);
   const students = studentsResult.rows[0].v;

@@ -13,7 +13,7 @@ const num = (fd: FormData, k: string) => Number(fd.get(k)) || 0;
 
 function dbErr(e: unknown, back: string): never {
   const code = (e as { code?: string })?.code ?? "";
-  if (code === "23505") redirect(withMsg(back, "That School ID or email is already used.", "err"));
+  if (code === "23505" || code === "ERR_SQLITE_CONSTRAINT_UNIQUE") redirect(withMsg(back, "That School ID or email is already used.", "err"));
   throw e;
 }
 
@@ -118,7 +118,7 @@ export async function adjustHours(fd: FormData) {
   const seconds = Math.round(hours * 3600) * (direction === "remove" ? -1 : 1);
   try {
     await transaction(async (client) => {
-      const { rows: [student] } = await client.query("SELECT id,role FROM users WHERE id=$1 FOR UPDATE", [userId]);
+      const { rows: [student] } = await client.query("SELECT id,role FROM users WHERE id=$1", [userId]);
       if (!student || student.role !== "student") throw new Error("STUDENT_NOT_FOUND");
       if (seconds < 0) {
         const { rows: [balance] } = await client.query(

@@ -1,23 +1,24 @@
 # DutyTrack (Next.js + Tailwind)
 
-Attendance system: ID-number kiosk, student dashboard (stats, leaderboard, history, profile) and an admin panel.
+Attendance system with an ID-number kiosk, student dashboard, and admin panel. It uses a local SQLite database and can be accessed by devices on the same trusted local network.
 
-**Stack:** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 3 · Supabase PostgreSQL · JWT cookie sessions (`jose`) · `bcryptjs`
+**Stack:** Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 3 · SQLite (`node:sqlite`) · JWT cookie sessions (`jose`) · `bcryptjs`
 
-## Run it
+## Requirements
 
-```bash
-npm install
-cp .env.example .env.local     # set DATABASE_URL, SESSION_SECRET, and ADMIN_PASSWORD
-npm run build
-npm start                      # http://localhost:8080  (also reachable on your LAN IP)
-```
+- Node.js 22.5 or later (the built-in SQLite module is used)
+- npm
 
-For development use `npm run dev`.
+## Run on a local network
 
-On first start it creates the PostgreSQL tables and an admin account with School ID `ADMIN` and the password from `ADMIN_PASSWORD`. Set a strong password before first start, then change it under *My Profile* after logging in.
+1. Install dependencies with `npm install`.
+2. Copy `.env.example` to `.env.local`.
+3. Set unique, private values for `SESSION_SECRET` and `ADMIN_PASSWORD` before the first run. The first admin's School ID is `ADMIN`.
+4. Run `npm run dev` for development or `npm run build` followed by `npm start` for normal use.
+5. On the host computer, open `http://localhost:8080`. Other devices on the same network can open `http://<host-LAN-IP>:8080`.
+6. If other devices cannot connect, allow Node.js or inbound TCP port 8080 on the host's **Private** Windows Firewall profile. Do not expose this port to public networks.
 
-Optional: `npm run seed:demo` (stop the app first) adds 10 demo students with a few weeks of attendance so you can see the dashboards filled in. Demo password: `student123`.
+The app listens on `0.0.0.0:8080`. Local HTTP is not encrypted, so use a trusted private network only. `COOKIE_SECURE=false` is required for HTTP; use HTTPS and set it to `true` if you later add TLS.
 
 ## Pages
 
@@ -37,34 +38,26 @@ Optional: `npm run seed:demo` (stop the app first) adds 10 demo students with a 
 
 | Variable | Meaning |
 |---|---|
-| `SESSION_SECRET` | Long random string used to sign login cookies. **Set this.** |
-| `ADMIN_PASSWORD` | Password for the auto-created admin (first run only) |
-| `DATABASE_URL` | Supabase PostgreSQL connection string; use the transaction pooler on port `6543` for Vercel |
+| `SESSION_SECRET` | Long random string used to sign login cookies. Set a unique secret. |
+| `ADMIN_PASSWORD` | Password for the automatically created admin (first run only) |
+| `SQLITE_PATH` | SQLite file path; defaults to `data/dutytrack.sqlite` |
 | `NEXT_PUBLIC_BRAND_A` / `_B` | Logo text (white part / blue part) |
 | `TZ_NAME`, `TZ_OFFSET_MIN`, `NEXT_PUBLIC_TZ_NAME` | Time zone (default Asia/Manila, UTC+8). Keep the three consistent. |
-| `COOKIE_SECURE` | Set to `true` once you serve over HTTPS |
+| `COOKIE_SECURE` | Keep `false` for local HTTP; set `true` only for HTTPS |
 
-## Deploy to Vercel + Supabase
-
-1. Create a Supabase project and open **Project Settings → Database**. Copy the **Transaction pooler** connection string (port `6543`), replace its password placeholder, and URL-encode special characters in the password. Keep the `pgbouncer=true` query parameter.
-2. Push this repository to GitHub and import it into Vercel. The default Next.js build settings are sufficient.
-3. In **Vercel → Project Settings → Environment Variables**, add `DATABASE_URL`, a long random `SESSION_SECRET`, `ADMIN_PASSWORD`, `COOKIE_SECURE=true`, and the `TZ_NAME`, `TZ_OFFSET_MIN`, and `NEXT_PUBLIC_TZ_NAME` values used by the school.
-4. Deploy. The app creates its tables and first admin account on its first database request. Sign in with School ID `ADMIN` and the configured `ADMIN_PASSWORD`, then change the password.
-5. In Supabase, enable automated backups appropriate to your plan. Do not expose the database URL or any database password as a `NEXT_PUBLIC_` variable.
-
-Existing SQLite data is not copied automatically; a fresh Supabase database starts empty except for the initial admin. Export/transform existing student and attendance data before switching production traffic.
+The SQLite file is created automatically. Back it up by stopping the app and copying the database file and its SQLite WAL/SHM sidecars if present. Keep the database on the host computer's local disk, not a network share. A new local database starts with an admin account and no previous users or attendance records; the previous remote database is not changed.
 
 ## Hosting notes
 
 - New students get their School ID as their password unless the admin sets one. Ask them to change it.
 - Repeat scans within 30 seconds are ignored.
 - Hour additions/removals are stored as a signed ledger entry with admin, reason, and timestamp. A removal cannot exceed the student's current total.
+- Keep the host computer running while students use the site. This is a local-network app, not a Vercel/Supabase deployment.
 
 ## Project layout
 
 ```
 src/app/            pages, API routes (punch, feed, photo, admin export) and server actions
 src/components/     Shell (sidebar/topbar), Avatar, Logo, small client helpers
-src/lib/            PostgreSQL connection/schema + first-run admin, auth, queries, time helpers
-scripts/seed-demo.mjs
+src/lib/            SQLite connection/schema + first-run admin, auth, queries, time helpers
 ```

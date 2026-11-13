@@ -7,7 +7,7 @@ const config: Config = {
       colors: {
         brand: { DEFAULT: "#1d5cff", soft: "#e8efff" },
         card: "#f1f6ff",
-        panel: "#27364b",
+        panel: "#1a2b43",
       },
     },
   },

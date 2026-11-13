@@ -23,5 +23,23 @@ body { @apply bg-white text-slate-900 antialiased; }
 }
 
 /* Dark kiosk / login background */
-.kiosk-bg { background: radial-gradient(ellipse at 80% 100%, #16203a 0, #070a12 55%, #04060b 100%); }
-.dark-field { @apply w-full rounded-lg border border-[#3b4a60] bg-[#1b283b] px-3 py-2.5 text-sm text-white placeholder:text-slate-400 focus:outline-2 focus:outline-brand; }
+.kiosk-bg { background: radial-gradient(ellipse at 50% 0%, rgb(37 99 235 / 18%), transparent 42%), linear-gradient(145deg, #081321 0%, #10213a 55%, #0b1628 100%); }
+.dark-field { @apply w-full rounded-lg border border-[#526985] bg-[#101d31] px-3 py-2.5 text-sm text-white placeholder:text-slate-300 transition-shadow focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/50; }
+
+.punch-toast-enter { animation: punch-toast-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.punch-toast-exit { animation: punch-toast-out 220ms ease-in both; }
+
+@keyframes punch-toast-in {
+  from { opacity: 0; transform: translate3d(0, -18px, 0) scale(0.97); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
+@keyframes punch-toast-out {
+  from { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  to { opacity: 0; transform: translate3d(0, -10px, 0) scale(0.98); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .punch-toast-enter,
+  .punch-toast-exit { animation-duration: 1ms; }
+}

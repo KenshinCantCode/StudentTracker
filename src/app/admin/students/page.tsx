@@ -21,7 +21,7 @@ export default async function Students({ searchParams }: { searchParams: Promise
     `SELECT u.id,u.school_id,u.name,u.email,u.role,u.course,u.active,u.photo_ver,
       COALESCE((SELECT SUM((COALESCE(time_out,$1)-time_in)/1000) FROM attendance WHERE user_id=u.id),0)
       + COALESCE((SELECT SUM(seconds) FROM hour_adjustments WHERE user_id=u.id),0) secs
-     FROM users u WHERE ($2='' OR u.name ILIKE '%'||$2||'%' OR u.school_id ILIKE '%'||$2||'%') ORDER BY u.role, u.name`,
+     FROM users u WHERE ($2='' OR LOWER(u.name) LIKE '%'||LOWER($2)||'%' OR LOWER(u.school_id) LIKE '%'||LOWER($2)||'%') ORDER BY u.role, u.name`,
     [Date.now(), q]
   );
   const { rows: adjustments } = await query<{ id: number; name: string; school_id: string; admin_name: string; seconds: number; reason: string; created_at: number }>(

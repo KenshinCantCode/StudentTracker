@@ -39,8 +39,8 @@ export default async function Profile({ searchParams }: { searchParams: Promise<
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <form action={uploadPhoto} className="card-w">
           <h3 className="font-bold">Profile photo</h3>
-          <p className="mb-3 text-sm text-slate-500">JPG, PNG or WEBP, up to 2 MB.</p>
-          <input type="file" name="photo" accept="image/jpeg,image/png,image/webp" required className="mb-3 block text-sm" />
+          <p className="mb-3 text-sm text-slate-500">JPG, PNG, WEBP or GIF, up to 2 MB.</p>
+          <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" required className="mb-3 block text-sm" />
           <button className="btn btn-sm">Upload</button>
         </form>
         <form action={changePassword} className="card-w">
